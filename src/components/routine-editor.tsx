@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -15,36 +15,27 @@ import { WEEKDAY_LABELS } from '@/lib/dates';
 import { useTheme } from '@/hooks/use-theme';
 
 type Props = {
-  visible: boolean;
   routine: Routine | null;
   onClose: () => void;
 };
 
 const TIME_RE = /^([01]\d|2[0-3]):([0-5]\d)$/;
 
-export function RoutineEditor({ visible, routine, onClose }: Props) {
+// Rendered only while open (parent gates on mount), so initial state can be
+// seeded straight from props without an effect.
+export function RoutineEditor({ routine, onClose }: Props) {
   const theme = useTheme();
   const categories = useCategories();
   const createRoutine = useCreateRoutine();
   const updateRoutine = useUpdateRoutine();
   const deleteRoutine = useDeleteRoutine();
 
-  const [title, setTitle] = useState('');
-  const [recurrence, setRecurrence] = useState<Recurrence>('daily');
-  const [weekdays, setWeekdays] = useState<number[]>([]);
-  const [priority, setPriority] = useState(1);
-  const [categoryId, setCategoryId] = useState<string | null>(null);
-  const [reminder, setReminder] = useState('');
-
-  useEffect(() => {
-    if (!visible) return;
-    setTitle(routine?.title ?? '');
-    setRecurrence((routine?.recurrence as Recurrence) ?? 'daily');
-    setWeekdays(routine?.weekdays ?? []);
-    setPriority(routine?.priority ?? 1);
-    setCategoryId(routine?.category_id ?? null);
-    setReminder(routine?.reminder_time?.slice(0, 5) ?? '');
-  }, [visible, routine]);
+  const [title, setTitle] = useState(routine?.title ?? '');
+  const [recurrence, setRecurrence] = useState<Recurrence>((routine?.recurrence as Recurrence) ?? 'daily');
+  const [weekdays, setWeekdays] = useState<number[]>(routine?.weekdays ?? []);
+  const [priority, setPriority] = useState(routine?.priority ?? 1);
+  const [categoryId, setCategoryId] = useState<string | null>(routine?.category_id ?? null);
+  const [reminder, setReminder] = useState(routine?.reminder_time?.slice(0, 5) ?? '');
 
   const reminderValid = reminder === '' || TIME_RE.test(reminder);
   const weeklyValid = recurrence === 'daily' || weekdays.length > 0;
@@ -79,7 +70,7 @@ export function RoutineEditor({ visible, routine, onClose }: Props) {
   }
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+    <Modal visible animationType="slide" transparent onRequestClose={onClose}>
       <View style={styles.backdrop}>
         <View style={[styles.sheet, { backgroundColor: theme.background }]}>
           <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">

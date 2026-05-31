@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import {
   Modal,
   Pressable,
@@ -23,7 +23,6 @@ import { cancelReminder, scheduleTaskReminder } from '@/lib/notifications';
 import { useTheme } from '@/hooks/use-theme';
 
 type Props = {
-  visible: boolean;
   task: Task | null;
   dueDate: string;
   onClose: () => void;
@@ -31,29 +30,21 @@ type Props = {
 
 const TIME_RE = /^([01]\d|2[0-3]):([0-5]\d)$/;
 
-export function TaskEditor({ visible, task, dueDate, onClose }: Props) {
+// Rendered only while open (parent gates on mount), so initial state can be
+// seeded straight from props without an effect.
+export function TaskEditor({ task, dueDate, onClose }: Props) {
   const theme = useTheme();
   const categories = useCategories();
   const createTask = useCreateTask();
   const updateTask = useUpdateTask();
   const deleteTask = useDeleteTask();
 
-  const [title, setTitle] = useState('');
-  const [notes, setNotes] = useState('');
-  const [priority, setPriority] = useState(1);
-  const [status, setStatus] = useState<TaskStatus>('todo');
-  const [categoryId, setCategoryId] = useState<string | null>(null);
-  const [reminder, setReminder] = useState('');
-
-  useEffect(() => {
-    if (!visible) return;
-    setTitle(task?.title ?? '');
-    setNotes(task?.notes ?? '');
-    setPriority(task?.priority ?? 1);
-    setStatus((task?.status as TaskStatus) ?? 'todo');
-    setCategoryId(task?.category_id ?? null);
-    setReminder(task?.reminder_time?.slice(0, 5) ?? '');
-  }, [visible, task]);
+  const [title, setTitle] = useState(task?.title ?? '');
+  const [notes, setNotes] = useState(task?.notes ?? '');
+  const [priority, setPriority] = useState(task?.priority ?? 1);
+  const [status, setStatus] = useState<TaskStatus>((task?.status as TaskStatus) ?? 'todo');
+  const [categoryId, setCategoryId] = useState<string | null>(task?.category_id ?? null);
+  const [reminder, setReminder] = useState(task?.reminder_time?.slice(0, 5) ?? '');
 
   const reminderValid = reminder === '' || TIME_RE.test(reminder);
   const canSave = title.trim().length > 0 && reminderValid && !createTask.isPending;
@@ -92,7 +83,7 @@ export function TaskEditor({ visible, task, dueDate, onClose }: Props) {
   }
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+    <Modal visible animationType="slide" transparent onRequestClose={onClose}>
       <View style={styles.backdrop}>
         <View style={[styles.sheet, { backgroundColor: theme.background }]}>
           <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">

@@ -76,7 +76,7 @@ export default function BoardScreen() {
         </ScrollView>
       </SafeAreaView>
 
-      <TaskEditor visible={editing !== null} task={editing} dueDate={today} onClose={() => setEditing(null)} />
+      {editing ? <TaskEditor task={editing} dueDate={today} onClose={() => setEditing(null)} /> : null}
     </ThemedView>
   );
 }

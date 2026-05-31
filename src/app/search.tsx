@@ -88,12 +88,9 @@ export default function SearchScreen() {
         />
       </SafeAreaView>
 
-      <TaskEditor
-        visible={editing !== null}
-        task={editing}
-        dueDate={editing?.due_date ?? ''}
-        onClose={() => setEditing(null)}
-      />
+      {editing ? (
+        <TaskEditor task={editing} dueDate={editing.due_date} onClose={() => setEditing(null)} />
+      ) : null}
     </ThemedView>
   );
 }

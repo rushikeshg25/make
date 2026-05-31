@@ -202,12 +202,9 @@ export default function TodayScreen() {
         </View>
       </SafeAreaView>
 
-      <TaskEditor
-        visible={editorOpen}
-        task={editing}
-        dueDate={today}
-        onClose={() => setEditorOpen(false)}
-      />
+      {editorOpen ? (
+        <TaskEditor task={editing} dueDate={today} onClose={() => setEditorOpen(false)} />
+      ) : null}
     </ThemedView>
   );
 }

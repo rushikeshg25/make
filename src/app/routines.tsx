@@ -164,7 +164,9 @@ export default function RoutinesScreen() {
         />
       </SafeAreaView>
 
-      <RoutineEditor visible={editorOpen} routine={editing} onClose={() => setEditorOpen(false)} />
+      {editorOpen ? (
+        <RoutineEditor routine={editing} onClose={() => setEditorOpen(false)} />
+      ) : null}
     </ThemedView>
   );
 }
