@@ -26,6 +26,12 @@ export const tasksRepo = {
     );
   },
 
+  async listSince(date: string) {
+    return unwrap(
+      await supabase.from('tasks').select('*').gte('due_date', date).order('due_date'),
+    );
+  },
+
   async search(term: string) {
     const pattern = `%${term}%`;
     return unwrap(

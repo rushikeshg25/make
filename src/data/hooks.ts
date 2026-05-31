@@ -28,6 +28,13 @@ export function useTasks(date: string) {
   });
 }
 
+export function useTasksSince(date: string) {
+  return useQuery({
+    queryKey: ['tasks', 'since', date] as const,
+    queryFn: () => tasksRepo.listSince(date),
+  });
+}
+
 export function useSearchTasks(term: string) {
   return useQuery({
     queryKey: keys.search(term),
