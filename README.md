@@ -1,56 +1,102 @@
-# Welcome to your Expo app 👋
+# make — personal todo app
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A single-user Android todo app built with Expo (SDK 56) and Supabase. No auth —
+it's built for one person. Tasks roll over day to day, recurring routines
+generate automatically, and you get reminders, stats, and a kanban board.
 
-## Get started
+## Features
 
-1. Install dependencies
+- **Today dashboard** — today's tasks, quick-add, a daily motivational quote, and a done/total counter.
+- **Recurring routines** — define daily or weekly (per-weekday) tasks that materialize automatically each day.
+- **Rollover** — unfinished one-off tasks from past days bump to today on app open (and when the app returns to the foreground on a new day).
+- **Kanban board** — today's tasks across To do / In progress / Done columns.
+- **Reorder** — `↕` mode on Today to reorder tasks (persists `sort_order`).
+- **Priority, notes, categories** — per task, with colored category tags.
+- **Reminders** — local notifications at a task's reminder time (needs a native build, not Expo Go).
+- **Search** — debounced search over task titles and notes across all dates.
+- **Stats** — current streak, completion rate, and a 14-day completion chart.
 
+## Tech stack
+
+- **Expo SDK 56** + **expo-router** (file-based routing, `src/app`)
+- **React Query** for data fetching/caching
+- **Supabase** (Postgres) via `supabase-js` — the data layer is in `src/data` (typed repos + hooks) and `src/lib/supabase.ts`
+- Plain `StyleSheet` + themed components (`src/components/themed-*`)
+
+## Project layout
+
+```
+src/
+  app/            screens (index=Today, board, routines, stats, search) + _layout
+  components/     task-row, task-editor, routine-editor, themed-*, app-tabs
+  data/           types, repos (Supabase queries), hooks (React Query), rollover
+  lib/            supabase client, dates, quotes, stats, notifications, database.types
+```
+
+## Data model (Supabase, `public` schema)
+
+- **categories** — `name`, `color`
+- **routines** — recurring definitions: `recurrence` (`daily`/`weekly`), `weekdays[]`, `priority`, `category_id`, `reminder_time`, `active`
+- **tasks** — concrete instances + ad-hoc: `title`, `notes`, `due_date`, `status` (`todo`/`doing`/`done`), `priority`, `category_id`, `routine_id`, `reminder_time`, `rolled_over_count`, `sort_order`
+
+Two Postgres RPCs do the daily work idempotently:
+- `rollover_tasks(p_today)` — bumps unfinished one-off tasks to today
+- `generate_routine_tasks(p_date)` — creates today's instances for matching active routines
+
+> RLS is **disabled** — this is a single-user app and the publishable key is
+> public by design. Don't reuse this setup for a multi-user app.
+
+## Setup
+
+1. Install dependencies:
    ```bash
    npm install
    ```
-
-2. Start the app
-
+2. Create `.env` (gitignored) from the example:
    ```bash
-   npx expo start
+   cp .env.example .env
+   ```
+   ```
+   EXPO_PUBLIC_SUPABASE_URL=https://<project>.supabase.co
+   EXPO_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_xxx
+   ```
+3. Run in development (Expo Go — note: reminders won't fire in Expo Go):
+   ```bash
+   npm run android
    ```
 
-In the output, you'll find options to open the app in a
+## Build an APK (Expo cloud / EAS)
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+The build config lives in `eas.json` (the `preview` profile outputs an
+installable APK; `production` outputs an AAB for the Play Store). The Supabase
+env vars are baked into `eas.json`, so cloud builds don't need your local `.env`.
 
 ```bash
-npm run reset-project
+# one-time
+npx eas-cli@latest login
+
+# build the APK on Expo's servers (~10–20 min, prints a download link)
+npx eas-cli@latest build -p android --profile preview
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+Install the resulting `.apk` on your phone (allow "install from unknown
+sources"). This build includes native `expo-notifications`, so reminders work.
 
-### Other setup steps
+For a local build instead (needs Android SDK + Java):
+```bash
+npx eas-cli@latest build -p android --profile preview --local
+```
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+## Scripts
 
-## Learn more
+| Command | What it does |
+| --- | --- |
+| `npm run android` | Start Metro + open on Android |
+| `npm run lint` | ESLint (expo config) |
+| `npx tsc --noEmit` | Type-check |
 
-To learn more about developing your project with Expo, look at the following resources:
+## Notes / known limitations
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+- **No widget yet** — the Android home-screen widget is not built (it needs `react-native-android-widget` + a dev build).
+- **Reorder is tap-based (`▲▼`)**, not drag — chosen to avoid the Reanimated 4 compatibility risk on SDK 56.
+- **Reminders** are local-only and require a native build (any EAS build above); they don't fire in Expo Go.
