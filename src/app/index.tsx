@@ -1,98 +1,169 @@
-import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
+import { useRouter } from 'expo-router';
+import { useMemo, useState } from 'react';
+import { FlatList, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
+import { TaskEditor } from '@/components/task-editor';
+import { TaskRow } from '@/components/task-row';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { Spacing } from '@/constants/theme';
+import { useCategories, useCreateTask, useSetTaskStatus, useTasks } from '@/data/hooks';
+import { useDailySetup } from '@/data/rollover';
+import type { Task } from '@/data/types';
+import { formatLongDate, todayISO } from '@/lib/dates';
+import { quoteForDate } from '@/lib/quotes';
+import { useTheme } from '@/hooks/use-theme';
 
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
-  }
-  if (Device.isDevice) {
-    return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
-    );
-  }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
-  return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
+export default function TodayScreen() {
+  useDailySetup();
+  const theme = useTheme();
+  const router = useRouter();
+  const today = todayISO();
+
+  const tasks = useTasks(today);
+  const categories = useCategories();
+  const createTask = useCreateTask();
+  const setStatus = useSetTaskStatus();
+
+  const [quickAdd, setQuickAdd] = useState('');
+  const [editing, setEditing] = useState<Task | null>(null);
+  const [editorOpen, setEditorOpen] = useState(false);
+
+  const categoryById = useMemo(
+    () => new Map((categories.data ?? []).map((c) => [c.id, c])),
+    [categories.data],
   );
-}
 
-export default function HomeScreen() {
+  const quote = quoteForDate(today);
+  const items = tasks.data ?? [];
+  const doneCount = items.filter((t) => t.status === 'done').length;
+
+  function openEditor(task: Task | null) {
+    setEditing(task);
+    setEditorOpen(true);
+  }
+
+  async function submitQuickAdd() {
+    const title = quickAdd.trim();
+    if (!title) return;
+    setQuickAdd('');
+    await createTask.mutateAsync({ title, due_date: today });
+  }
+
   return (
     <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
-          <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
-          </ThemedText>
-        </ThemedView>
+      <SafeAreaView style={styles.safe} edges={['top']}>
+        <View style={styles.header}>
+          <View>
+            <ThemedText type="subtitle">Today</ThemedText>
+            <ThemedText type="small" themeColor="textSecondary">
+              {formatLongDate(today)}
+            </ThemedText>
+          </View>
+          <Pressable
+            hitSlop={10}
+            onPress={() => router.push('/search')}
+            style={[styles.iconBtn, { backgroundColor: theme.backgroundElement }]}>
+            <ThemedText style={{ fontSize: 18 }}>🔍</ThemedText>
+          </Pressable>
+        </View>
 
-        <ThemedText type="code" style={styles.code}>
-          get started
-        </ThemedText>
+        <FlatList
+          data={items}
+          keyExtractor={(t) => t.id}
+          contentContainerStyle={styles.list}
+          ListHeaderComponent={
+            <View style={styles.listHeader}>
+              <View style={[styles.quote, { backgroundColor: theme.backgroundElement }]}>
+                <ThemedText style={styles.quoteText}>“{quote.text}”</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">
+                  — {quote.author}
+                </ThemedText>
+              </View>
+              {items.length > 0 ? (
+                <ThemedText type="smallBold" themeColor="textSecondary">
+                  {doneCount}/{items.length} done
+                </ThemedText>
+              ) : null}
+            </View>
+          }
+          renderItem={({ item }) => (
+            <TaskRow
+              task={item}
+              category={item.category_id ? categoryById.get(item.category_id) : undefined}
+              onPress={openEditor}
+              onToggle={(t) =>
+                setStatus.mutate({ id: t.id, status: t.status === 'done' ? 'todo' : 'done' })
+              }
+            />
+          )}
+          ItemSeparatorComponent={() => <View style={{ height: Spacing.two }} />}
+          ListEmptyComponent={
+            tasks.isLoading ? null : (
+              <ThemedText themeColor="textSecondary" style={styles.empty}>
+                Nothing planned yet. Add your first task below.
+              </ThemedText>
+            )
+          }
+        />
 
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title="Try editing"
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
+        <View style={[styles.quickAddBar, { backgroundColor: theme.backgroundElement }]}>
+          <TextInput
+            placeholder="Quick add a task…"
+            placeholderTextColor={theme.textSecondary}
+            value={quickAdd}
+            onChangeText={setQuickAdd}
+            onSubmitEditing={submitQuickAdd}
+            returnKeyType="done"
+            style={[styles.quickInput, { color: theme.text }]}
           />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
-          <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-          />
-        </ThemedView>
-
-        {Platform.OS === 'web' && <WebBadge />}
+          <Pressable
+            hitSlop={8}
+            onPress={() => openEditor(null)}
+            style={[styles.detailBtn, { backgroundColor: theme.backgroundSelected }]}>
+            <ThemedText type="smallBold">＋ Details</ThemedText>
+          </Pressable>
+        </View>
       </SafeAreaView>
+
+      <TaskEditor
+        visible={editorOpen}
+        task={editing}
+        dueDate={today}
+        onClose={() => setEditorOpen(false)}
+      />
     </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
+  container: { flex: 1 },
+  safe: { flex: 1 },
+  header: {
     flexDirection: 'row',
-  },
-  safeArea: {
-    flex: 1,
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
     paddingHorizontal: Spacing.four,
+    paddingTop: Spacing.three,
+    paddingBottom: Spacing.two,
+  },
+  iconBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  list: { paddingHorizontal: Spacing.four, paddingBottom: Spacing.five },
+  listHeader: { gap: Spacing.three, marginBottom: Spacing.three },
+  quote: { padding: Spacing.three, borderRadius: 12, gap: Spacing.one },
+  quoteText: { fontSize: 16, fontStyle: 'italic', lineHeight: 22 },
+  empty: { textAlign: 'center', marginTop: Spacing.five },
+  quickAddBar: {
+    flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    maxWidth: MaxContentWidth,
+    margin: Spacing.four,
+    marginTop: 0,
+    borderRadius: 12,
+    paddingLeft: Spacing.three,
+    paddingRight: Spacing.two,
+    gap: Spacing.two,
   },
-  heroSection: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
-  },
-  title: {
-    textAlign: 'center',
-  },
-  code: {
-    textTransform: 'uppercase',
-  },
-  stepContainer: {
-    gap: Spacing.three,
-    alignSelf: 'stretch',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
-  },
+  quickInput: { flex: 1, paddingVertical: Spacing.three, fontSize: 16 },
+  detailBtn: { paddingHorizontal: Spacing.three, paddingVertical: Spacing.two, borderRadius: 10 },
 });

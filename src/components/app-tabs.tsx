@@ -1,32 +1,40 @@
-import { NativeTabs } from 'expo-router/unstable-native-tabs';
-import { useColorScheme } from 'react-native';
+import { Tabs } from 'expo-router';
+import { Text } from 'react-native';
 
-import { Colors } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
+
+function TabIcon({ emoji }: { emoji: string }) {
+  return <Text style={{ fontSize: 20 }}>{emoji}</Text>;
+}
 
 export default function AppTabs() {
-  const scheme = useColorScheme();
-  const colors = Colors[scheme === 'unspecified' ? 'light' : scheme];
+  const theme = useTheme();
 
   return (
-    <NativeTabs
-      backgroundColor={colors.background}
-      indicatorColor={colors.backgroundElement}
-      labelStyle={{ selected: { color: colors.text } }}>
-      <NativeTabs.Trigger name="index">
-        <NativeTabs.Trigger.Label>Home</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon
-          src={require('@/assets/images/tabIcons/home.png')}
-          renderingMode="template"
-        />
-      </NativeTabs.Trigger>
-
-      <NativeTabs.Trigger name="explore">
-        <NativeTabs.Trigger.Label>Explore</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon
-          src={require('@/assets/images/tabIcons/explore.png')}
-          renderingMode="template"
-        />
-      </NativeTabs.Trigger>
-    </NativeTabs>
+    <Tabs
+      screenOptions={{
+        headerShown: false,
+        tabBarActiveTintColor: theme.text,
+        tabBarInactiveTintColor: theme.textSecondary,
+        tabBarStyle: { backgroundColor: theme.background, borderTopColor: theme.backgroundElement },
+      }}>
+      <Tabs.Screen
+        name="index"
+        options={{ title: 'Today', tabBarIcon: () => <TabIcon emoji="📋" /> }}
+      />
+      <Tabs.Screen
+        name="board"
+        options={{ title: 'Board', tabBarIcon: () => <TabIcon emoji="🗂️" /> }}
+      />
+      <Tabs.Screen
+        name="routines"
+        options={{ title: 'Routines', tabBarIcon: () => <TabIcon emoji="🔁" /> }}
+      />
+      <Tabs.Screen
+        name="stats"
+        options={{ title: 'Stats', tabBarIcon: () => <TabIcon emoji="📊" /> }}
+      />
+      <Tabs.Screen name="search" options={{ href: null }} />
+    </Tabs>
   );
 }
