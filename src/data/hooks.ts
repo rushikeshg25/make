@@ -68,6 +68,14 @@ export function useSetTaskStatus() {
   });
 }
 
+export function useReorderTasks() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (orderedIds: string[]) => tasksRepo.setOrder(orderedIds),
+    onSuccess: () => invalidateTasks(qc),
+  });
+}
+
 export function useDeleteTask() {
   const qc = useQueryClient();
   return useMutation({

@@ -64,6 +64,21 @@ export const tasksRepo = {
     if (error) throw new Error(error.message);
   },
 
+  // Persist a new ordering by writing each task's index to sort_order.
+  async setOrder(orderedIds: string[]) {
+    await Promise.all(
+      orderedIds.map((id, i) =>
+        supabase
+          .from('tasks')
+          .update({ sort_order: i })
+          .eq('id', id)
+          .then(({ error }) => {
+            if (error) throw new Error(error.message);
+          }),
+      ),
+    );
+  },
+
   // Bump past-due, unfinished one-off tasks (no routine) up to `today`.
   async rolloverTo(today: string) {
     const { error } = await supabase.rpc('rollover_tasks', { p_today: today });

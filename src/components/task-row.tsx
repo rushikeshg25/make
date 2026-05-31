@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -12,9 +13,10 @@ type Props = {
   onToggle: (task: Task) => void;
   onPress: (task: Task) => void;
   onLongPress?: (task: Task) => void;
+  rightSlot?: ReactNode;
 };
 
-export function TaskRow({ task, category, onToggle, onPress, onLongPress }: Props) {
+export function TaskRow({ task, category, onToggle, onPress, onLongPress, rightSlot }: Props) {
   const theme = useTheme();
   const done = task.status === 'done';
 
@@ -62,6 +64,7 @@ export function TaskRow({ task, category, onToggle, onPress, onLongPress }: Prop
           ) : null}
         </View>
       </View>
+      {rightSlot}
     </Pressable>
   );
 }
