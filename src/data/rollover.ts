@@ -3,6 +3,7 @@ import { AppState } from 'react-native';
 import { useQueryClient } from '@tanstack/react-query';
 
 import { todayISO } from '@/lib/dates';
+import { scheduleTaskReminder } from '@/lib/notifications';
 
 import { routinesRepo, tasksRepo } from './repos';
 
@@ -22,6 +23,7 @@ export function useDailySetup() {
       try {
         await tasksRepo.rolloverTo(today);
         await routinesRepo.generateFor(today);
+        await scheduleTodaysReminders(today);
         qc.invalidateQueries({ queryKey: ['tasks'] });
       } catch {
         lastRun.current = null; // allow a retry on the next foreground
@@ -34,4 +36,15 @@ export function useDailySetup() {
     });
     return () => sub.remove();
   }, [qc]);
+}
+
+// Schedule local reminders for today's tasks that have a time but no pending
+// notification yet (e.g. instances just generated from a routine).
+async function scheduleTodaysReminders(today: string) {
+  const tasks = await tasksRepo.listByDate(today);
+  for (const task of tasks) {
+    if (!task.reminder_time || task.reminder_notification_id || task.status === 'done') continue;
+    const id = await scheduleTaskReminder(task);
+    if (id) await tasksRepo.update(task.id, { reminder_notification_id: id });
+  }
 }

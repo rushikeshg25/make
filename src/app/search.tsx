@@ -69,7 +69,11 @@ export default function SearchScreen() {
                 category={item.category_id ? categoryById.get(item.category_id) : undefined}
                 onPress={setEditing}
                 onToggle={(t) =>
-                  setStatus.mutate({ id: t.id, status: t.status === 'done' ? 'todo' : 'done' })
+                  setStatus.mutate({
+                    id: t.id,
+                    status: t.status === 'done' ? 'todo' : 'done',
+                    reminderId: t.reminder_notification_id,
+                  })
                 }
               />
             </View>

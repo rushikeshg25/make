@@ -16,8 +16,10 @@ import {
   useDeleteTask,
   useUpdateTask,
 } from '@/data/hooks';
+import { tasksRepo } from '@/data/repos';
 import type { Task, TaskStatus } from '@/data/types';
 import { PRIORITY_COLORS, PRIORITY_LABELS, STATUS_LABELS, TASK_STATUSES } from '@/data/types';
+import { cancelReminder, scheduleTaskReminder } from '@/lib/notifications';
 import { useTheme } from '@/hooks/use-theme';
 
 type Props = {
@@ -67,16 +69,25 @@ export function TaskEditor({ visible, task, dueDate, onClose }: Props) {
       reminder_time,
       completed_at: status === 'done' ? new Date().toISOString() : null,
     };
-    if (task) {
-      await updateTask.mutateAsync({ id: task.id, patch: fields });
-    } else {
-      await createTask.mutateAsync({ ...fields, due_date: dueDate });
+    const saved: Task = task
+      ? await updateTask.mutateAsync({ id: task.id, patch: fields })
+      : await createTask.mutateAsync({ ...fields, due_date: dueDate });
+
+    // Re-sync the local reminder: drop the old one, schedule a fresh one, and
+    // persist the resulting notification id (or null) back onto the task.
+    await cancelReminder(task?.reminder_notification_id);
+    const notifId = await scheduleTaskReminder(saved);
+    if (notifId !== saved.reminder_notification_id) {
+      await tasksRepo.update(saved.id, { reminder_notification_id: notifId });
     }
     onClose();
   }
 
   async function remove() {
-    if (task) await deleteTask.mutateAsync(task.id);
+    if (task) {
+      await cancelReminder(task.reminder_notification_id);
+      await deleteTask.mutateAsync(task.id);
+    }
     onClose();
   }
 

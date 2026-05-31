@@ -9,9 +9,10 @@ import type {
   TaskUpdate,
 } from './types';
 
-function unwrap<T>(res: { data: T | null; error: { message: string } | null }): T {
+function unwrap<T>(res: { data: T | null; error: { message: string } | null }): NonNullable<T> {
   if (res.error) throw new Error(res.error.message);
-  return res.data as T;
+  if (res.data == null) throw new Error('No data returned');
+  return res.data as NonNullable<T>;
 }
 
 export const tasksRepo = {

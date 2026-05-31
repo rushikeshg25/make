@@ -136,7 +136,11 @@ export default function TodayScreen() {
                 reordering
                   ? () => {}
                   : (t) =>
-                      setStatus.mutate({ id: t.id, status: t.status === 'done' ? 'todo' : 'done' })
+                      setStatus.mutate({
+                        id: t.id,
+                        status: t.status === 'done' ? 'todo' : 'done',
+                        reminderId: t.reminder_notification_id,
+                      })
               }
               rightSlot={
                 reordering ? (

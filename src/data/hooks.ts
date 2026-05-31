@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
+import { cancelReminder } from '@/lib/notifications';
+
 import { categoriesRepo, routinesRepo, tasksRepo } from './repos';
 import type {
   CategoryInsert,
@@ -62,8 +64,18 @@ export function useUpdateTask() {
 export function useSetTaskStatus() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, status }: { id: string; status: TaskStatus }) =>
-      tasksRepo.setStatus(id, status),
+    mutationFn: async ({
+      id,
+      status,
+      reminderId,
+    }: {
+      id: string;
+      status: TaskStatus;
+      reminderId?: string | null;
+    }) => {
+      if (status === 'done') await cancelReminder(reminderId);
+      return tasksRepo.setStatus(id, status);
+    },
     onSuccess: () => invalidateTasks(qc),
   });
 }
